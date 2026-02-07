@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description"
+        content="HVAC Diagnostic Tool helps identify possible HVAC issues based on symptoms and indoor temperature.">
+    <title>HVAC Diagnostic Tool</title>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <header class="site-header">
+        <h1>HVAC Diagnostic Tool</h1>
+        <p>Identify common HVAC system problems</p>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2 class="card-title">Run a Quick Diagnostic</h2>
+
+            <p class="note" role="note">
+                <strong>Safety:</strong> If you smell gas, see soot, or suspect carbon monoxide (CO), stop and call a
+                professional.
+            </p>
+
+            <form id="diagnostic-form" novalidate>
+                <div class="form-group">
+                    <label for="system">HVAC System Type</label>
+                    <select id="system" name="system" required>
+                        <option value="">Select system</option>
+                        <option value="furnace">Furnace</option>
+                        <option value="ac">Air Conditioner</option>
+                        <option value="heat-pump">Heat Pump</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="symptom">Main Symptom</label>
+                    <select id="symptom" name="symptom" required>
+                        <option value="">Select symptom</option>
+                        <option value="no-heat">No Heat</option>
+                        <option value="no-cooling">No Cooling</option>
+                        <option value="weak-airflow">Weak Airflow</option>
+                        <option value="short-cycling">Short Cycling</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="temperature">Indoor Temperature (°F)</label>
+                    <input type="number" id="temperature" name="temperature" placeholder="e.g. 68" inputmode="numeric"
+                        min="30" max="110" required>
+                </div>
+
+                <p id="form-message" class="form-message" aria-live="polite"></p>
+
+                <button type="submit" class="btn">Diagnose</button>
+            </form>
+
+            <hr class="divider">
+
+            <section id="results" aria-live="polite">
+                <h3>Results</h3>
+                <div class="results-box">
+                    <p class="muted">Submit the form to see possible causes and next steps.</p>
+                </div>
+            </section>
+
+            <hr class="divider">
+
+            <section id="component-lookup" aria-live="polite">
+                <h3>Component Lookup</h3>
+
+                <div class="form-group">
+                    <label for="component-search">Search a component</label>
+                    <input type="text" id="component-search" placeholder="e.g. thermostat, air filter, capacitor">
+                </div>
+
+                <div id="component-result"></div>
+            </section>
+
+            <hr class="divider">
+
+            <section id="service-notes" aria-live="polite">
+                <h3>Maintenance Notes</h3>
+                <p class="muted">Log what maintenance or repairs were performed for future reference.</p>
+
+                <form id="notes-form" novalidate>
+                    <div class="form-group">
+                        <label for="note-text">Notes</label>
+                        <textarea id="note-text" rows="4"
+                            placeholder="Example: Replaced air filter, cleaned condenser coil, verified thermostat settings..."
+                            required></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="note-tech">Technician (optional)</label>
+                            <input type="text" id="note-tech" placeholder="Name">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="note-date">Date</label>
+                            <input type="date" id="note-date" required>
+                        </div>
+                    </div>
+
+                    <p id="notes-message" class="form-message" aria-live="polite"></p>
+
+                    <div class="btn-row">
+                        <button type="submit" class="btn">Save Note</button>
+                        <button type="button" id="clear-notes" class="btn btn-secondary">Clear All</button>
+                    </div>
+                </form>
+
+                <div id="notes-list" class="notes-list"></div>
+            </section>
+
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <p>HVAC Diagnostic Project – Final Project</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+</body>
+
+</html>
