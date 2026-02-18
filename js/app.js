@@ -5,16 +5,11 @@ const formMessage = document.querySelector("#form-message");
 const componentSearchInput = document.querySelector("#component-search");
 const componentResult = document.querySelector("#component-result");
 
+// Your MockAPI endpoints
 const DIAG_API_URL = "https://69816966c9a606f5d446bed4.mockapi.io/diagnoses";
 const COMP_API_URL = "https://69816966c9a606f5d446bed4.mockapi.io/components";
 
-const USE_PROXY = location.hostname.includes("github.io");
-const CORS_PROXY = "https://cors.isomorphic-git.org/";
-
-function withCorsProxy(url) {
-    return USE_PROXY ? `${CORS_PROXY}${url}` : url;
-}
-
+// ---------- HELPERS ----------
 function showMessage(msg, isError = false) {
     formMessage.textContent = msg;
     formMessage.style.color = isError ? "crimson" : "green";
@@ -28,8 +23,11 @@ function escapeHtml(str) {
 }
 
 function renderList(title, items) {
-    const safeItems = (items || []).map((i) => `<li>${escapeHtml(i)}</li>`).join("");
-    return `<h4>${escapeHtml(title)}</h4><ul>${safeItems}</ul>`;
+    const safeItems = (items || []).map(i => `<li>${escapeHtml(i)}</li>`).join("");
+    return `
+    <h4>${escapeHtml(title)}</h4>
+    <ul>${safeItems}</ul>
+  `;
 }
 
 function isValidTemperature(value) {
@@ -46,21 +44,15 @@ function resetResults() {
   `;
 }
 
-async function fetchJson(url) {
-    const res = await fetch(withCorsProxy(url), { cache: "no-store" });
-    if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`HTTP ${res.status} ${res.statusText} - ${text.slice(0, 140)}`);
-    }
+// ---------- DIAGNOSTIC ----------
+async function fetchAllDiagnoses() {
+    const res = await fetch(DIAG_API_URL);
+    if (!res.ok) throw new Error("Failed to fetch diagnoses");
     return res.json();
 }
 
-async function fetchAllDiagnoses() {
-    return fetchJson(DIAG_API_URL);
-}
-
 function findDiagnosis(all, system, symptom) {
-    return (all || []).find((d) => d.systemType === system && d.symptom === symptom);
+    return all.find(d => d.systemType === system && d.symptom === symptom);
 }
 
 function renderDiagnosis(d) {
@@ -71,29 +63,35 @@ function renderDiagnosis(d) {
     <div class="results-box">
       <p><strong>${escapeHtml(d.summary)}</strong></p>
       <span class="confidence-badge">Confidence: ${confidencePct}%</span>
+
       ${renderList("Possible Causes", d.likelyCauses)}
       ${renderList("Recommended Checks", d.recommendedChecks)}
       ${renderList("Recommended Fixes", d.recommendedFixes)}
+
       <div class="safety-box">
         <h4 class="safety-title">Safety Warnings</h4>
-        <ul>${(d.safetyWarnings || []).map((w) => `<li>${escapeHtml(w)}</li>`).join("")}</ul>
+        <ul>
+          ${(d.safetyWarnings || []).map(w => `<li>${escapeHtml(w)}</li>`).join("")}
+        </ul>
       </div>
     </div>
   `;
 }
 
+// ---------- COMPONENT LOOKUP ----------
 async function fetchAllComponents() {
-    return fetchJson(COMP_API_URL);
+    const res = await fetch(COMP_API_URL);
+    if (!res.ok) throw new Error("Failed to fetch components");
+    return res.json();
 }
 
 function findComponent(all, term) {
     const t = term.toLowerCase().trim();
     if (!t) return null;
 
-    return (all || []).find(
-        (c) =>
-            (c.name || "").toLowerCase().includes(t) ||
-            (c.componentId || "").toLowerCase().includes(t)
+    return all.find(c =>
+        (c.name || "").toLowerCase().includes(t) ||
+        (c.componentId || "").toLowerCase().includes(t)
     );
 }
 
@@ -109,6 +107,7 @@ function renderComponent(comp) {
   `;
 }
 
+// ---------- EVENTS ----------
 form.addEventListener("submit", async (e) => {
     e.preventDefault();
     showMessage("");
@@ -117,8 +116,10 @@ form.addEventListener("submit", async (e) => {
     const symptom = document.querySelector("#symptom").value;
     const tempValue = document.querySelector("#temperature").value;
 
+    // Clear previous results (requested improvement)
     resetResults();
 
+    // Validation
     if (!system || !symptom || !tempValue) {
         showMessage("Please complete all fields.", true);
         return;
@@ -141,11 +142,11 @@ form.addEventListener("submit", async (e) => {
         renderDiagnosis(match);
         showMessage("Diagnosis generated successfully.");
     } catch (err) {
-        console.error(err);
         showMessage("Unable to load diagnosis data. Please try again.", true);
     }
 });
 
+// Component search (simple debounce)
 let compTimer = null;
 
 componentSearchInput.addEventListener("input", () => {
@@ -172,14 +173,14 @@ componentSearchInput.addEventListener("input", () => {
 
             renderComponent(match);
         } catch (err) {
-            console.error(err);
             componentResult.innerHTML = `<p class="muted">Error loading component data.</p>`;
         }
     }, 300);
 });
 
+// Initial state
 resetResults();
-
+// ---------- MAINTENANCE NOTES (localStorage) ----------
 const notesForm = document.querySelector("#notes-form");
 const notesMessage = document.querySelector("#notes-message");
 const notesList = document.querySelector("#notes-list");
@@ -208,6 +209,13 @@ function saveNotes(notes) {
     localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
 }
 
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (m) => {
+        const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
+        return map[m];
+    });
+}
+
 function renderNotes() {
     const notes = loadNotes();
     if (!notes.length) {
@@ -215,9 +223,7 @@ function renderNotes() {
         return;
     }
 
-    notesList.innerHTML = notes
-        .map(
-            (n) => `
+    notesList.innerHTML = notes.map(n => `
     <div class="note-item">
       <div class="note-meta">
         <span><strong>Date:</strong> ${escapeHtml(n.date)}</span>
@@ -226,15 +232,15 @@ function renderNotes() {
         ${n.symptom ? `<span><strong>Symptom:</strong> ${escapeHtml(n.symptom)}</span>` : ""}
       </div>
       <div>${escapeHtml(n.text)}</div>
+
       <div class="note-actions">
         <button class="small-btn small-btn-danger" data-delete="${n.id}">Delete</button>
       </div>
     </div>
-  `
-        )
-        .join("");
+  `).join("");
 }
 
+// Optional: prefill date with today
 (function initNotes() {
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -257,6 +263,7 @@ notesForm.addEventListener("submit", (e) => {
         return;
     }
 
+    // Pull current selections to store context (optional but useful)
     const system = document.querySelector("#system")?.value || "";
     const symptom = document.querySelector("#symptom")?.value || "";
 
@@ -267,7 +274,7 @@ notesForm.addEventListener("submit", (e) => {
         tech,
         date,
         system,
-        symptom,
+        symptom
     });
 
     saveNotes(notes);
@@ -283,7 +290,7 @@ notesList.addEventListener("click", (e) => {
     if (!btn) return;
 
     const id = btn.getAttribute("data-delete");
-    const notes = loadNotes().filter((n) => n.id !== id);
+    const notes = loadNotes().filter(n => n.id !== id);
     saveNotes(notes);
     renderNotes();
     setNotesMessage("Note deleted.");
