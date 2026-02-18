@@ -8,6 +8,8 @@ const componentResult = document.querySelector("#component-result");
 const DIAG_API_URL = "https://69816966c9a606f5d446bed4.mockapi.io/diagnoses";
 const COMP_API_URL = "https://69816966c9a606f5d446bed4.mockapi.io/components";
 
+const IS_GITHUB_PAGES = location.hostname.includes("github.io");
+
 const PROXIES = [
     (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     (url) => `https://cors.isomorphic-git.org/${url}`,
@@ -44,7 +46,16 @@ function resetResults() {
   `;
 }
 
-async function fetchJson(url) {
+async function fetchJsonDirect(url) {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status} ${res.statusText} - ${text.slice(0, 160)}`);
+    }
+    return res.json();
+}
+
+async function fetchJsonViaProxies(url) {
     let lastErr;
 
     for (const proxy of PROXIES) {
@@ -67,12 +78,16 @@ async function fetchJson(url) {
     throw lastErr || new Error("Failed to fetch via proxies");
 }
 
+async function fetchJson(url) {
+    return IS_GITHUB_PAGES ? fetchJsonViaProxies(url) : fetchJsonDirect(url);
+}
+
 async function fetchAllDiagnoses() {
     return fetchJson(DIAG_API_URL);
 }
 
-function findDiagnosis(all, system, symptom) {
-    return (all || []).find((d) => d.systemType === system && d.symptom === symptom);
+function findDiagnosis(all, systemTypeText, symptomText) {
+    return (all || []).find((d) => d.systemType === systemTypeText && d.symptom === symptomText);
 }
 
 function renderDiagnosis(d) {
@@ -125,13 +140,13 @@ form.addEventListener("submit", async (e) => {
     e.preventDefault();
     showMessage("");
 
-    const system = document.querySelector("#system").value;
-    const symptom = document.querySelector("#symptom").value;
+    const systemSelect = document.querySelector("#system");
+    const symptomSelect = document.querySelector("#symptom");
     const tempValue = document.querySelector("#temperature").value;
 
     resetResults();
 
-    if (!system || !symptom || !tempValue) {
+    if (!systemSelect.value || !symptomSelect.value || !tempValue) {
         showMessage("Please complete all fields.", true);
         return;
     }
@@ -141,9 +156,12 @@ form.addEventListener("submit", async (e) => {
         return;
     }
 
+    const systemTypeText = systemSelect.selectedOptions[0].textContent.trim();
+    const symptomText = symptomSelect.selectedOptions[0].textContent.trim();
+
     try {
         const diagnoses = await fetchAllDiagnoses();
-        const match = findDiagnosis(diagnoses, system, symptom);
+        const match = findDiagnosis(diagnoses, systemTypeText, symptomText);
 
         if (!match) {
             showMessage("No diagnosis found for that selection.", true);
@@ -269,8 +287,10 @@ notesForm.addEventListener("submit", (e) => {
         return;
     }
 
-    const system = document.querySelector("#system")?.value || "";
-    const symptom = document.querySelector("#symptom")?.value || "";
+    const systemSelect = document.querySelector("#system");
+    const symptomSelect = document.querySelector("#symptom");
+    const systemText = systemSelect?.value ? systemSelect.selectedOptions[0].textContent.trim() : "";
+    const symptomText = symptomSelect?.value ? symptomSelect.selectedOptions[0].textContent.trim() : "";
 
     const notes = loadNotes();
     notes.unshift({
@@ -278,8 +298,8 @@ notesForm.addEventListener("submit", (e) => {
         text,
         tech,
         date,
-        system,
-        symptom,
+        system: systemText,
+        symptom: symptomText,
     });
 
     saveNotes(notes);
