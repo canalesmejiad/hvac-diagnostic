@@ -8,9 +8,11 @@ const componentResult = document.querySelector("#component-result");
 const DIAG_API_URL = "https://69816966c9a606f5d446bed4.mockapi.io/diagnoses";
 const COMP_API_URL = "https://69816966c9a606f5d446bed4.mockapi.io/components";
 
+const USE_PROXY = location.hostname.includes("github.io");
 const PROXY_BASE = "https://api.allorigins.win/raw?url=";
-function withCorsProxy(url) {
-    return `${PROXY_BASE}${encodeURIComponent(url)}`;
+
+function maybeProxy(url) {
+    return USE_PROXY ? `${PROXY_BASE}${encodeURIComponent(url)}` : url;
 }
 
 function showMessage(msg, isError = false) {
@@ -44,29 +46,13 @@ function resetResults() {
   `;
 }
 
-function sleep(ms) {
-    return new Promise((r) => setTimeout(r, ms));
-}
-
-async function fetchJson(url, retries = 2) {
-    const finalUrl = withCorsProxy(url);
-
-    try {
-        const res = await fetch(finalUrl, { cache: "no-store" });
-
-        if (!res.ok) {
-            const text = await res.text().catch(() => "");
-            throw new Error(`HTTP ${res.status} ${res.statusText} - ${text.slice(0, 160)}`);
-        }
-
-        return res.json();
-    } catch (err) {
-        if (retries > 0) {
-            await sleep(500);
-            return fetchJson(url, retries - 1);
-        }
-        throw err;
+async function fetchJson(url) {
+    const res = await fetch(maybeProxy(url), { cache: "no-store" });
+    if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status} ${res.statusText} - ${text.slice(0, 160)}`);
     }
+    return res.json();
 }
 
 async function fetchAllDiagnoses() {
