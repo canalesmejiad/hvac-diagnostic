@@ -8,12 +8,10 @@ const componentResult = document.querySelector("#component-result");
 const DIAG_API_URL = "https://69816966c9a606f5d446bed4.mockapi.io/diagnoses";
 const COMP_API_URL = "https://69816966c9a606f5d446bed4.mockapi.io/components";
 
-const FORCE_PROXY = true;
-const PROXY_BASE = "https://api.allorigins.win/raw?url=";
-
-function maybeProxy(url) {
-    return FORCE_PROXY ? `${PROXY_BASE}${encodeURIComponent(url)}` : url;
-}
+const PROXIES = [
+    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    (url) => `https://cors.isomorphic-git.org/${url}`,
+];
 
 function showMessage(msg, isError = false) {
     formMessage.textContent = msg;
@@ -47,12 +45,26 @@ function resetResults() {
 }
 
 async function fetchJson(url) {
-    const res = await fetch(maybeProxy(url), { cache: "no-store" });
-    if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`HTTP ${res.status} ${res.statusText} - ${text.slice(0, 160)}`);
+    let lastErr;
+
+    for (const proxy of PROXIES) {
+        const finalUrl = proxy(url);
+        try {
+            const res = await fetch(finalUrl, { cache: "no-store" });
+
+            if (!res.ok) {
+                const text = await res.text().catch(() => "");
+                throw new Error(`HTTP ${res.status} ${res.statusText} - ${text.slice(0, 160)}`);
+            }
+
+            return res.json();
+        } catch (err) {
+            console.error("Proxy failed:", finalUrl, err);
+            lastErr = err;
+        }
     }
-    return res.json();
+
+    throw lastErr || new Error("Failed to fetch via proxies");
 }
 
 async function fetchAllDiagnoses() {
