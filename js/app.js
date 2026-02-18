@@ -8,11 +8,11 @@ const componentResult = document.querySelector("#component-result");
 const DIAG_API_URL = "https://69816966c9a606f5d446bed4.mockapi.io/diagnoses";
 const COMP_API_URL = "https://69816966c9a606f5d446bed4.mockapi.io/components";
 
-const USE_PROXY = location.hostname.includes("github.io");
+const FORCE_PROXY = true;
 const PROXY_BASE = "https://api.allorigins.win/raw?url=";
 
 function maybeProxy(url) {
-    return USE_PROXY ? `${PROXY_BASE}${encodeURIComponent(url)}` : url;
+    return FORCE_PROXY ? `${PROXY_BASE}${encodeURIComponent(url)}` : url;
 }
 
 function showMessage(msg, isError = false) {
